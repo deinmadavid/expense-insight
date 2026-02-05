@@ -38,9 +38,25 @@
 }
 
 .composer-card,
-.ledger-card {
+.ledger-card,
+.analytics-card {
   padding: 1.5rem;
   margin-bottom: 1.5rem;
+}
+
+.section-header,
+.action-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+}
+
+.action-row input {
+  border-radius: 999px;
+  border: 1px solid rgba(251, 146, 60, 0.22);
+  padding: 0.75rem 0.9rem;
+  background: rgba(255, 247, 237, 0.9);
 }
 
 .entry-form {
@@ -75,8 +91,19 @@
   cursor: pointer;
 }
 
+.ghost-button {
+  border: 1px solid rgba(249, 115, 22, 0.25);
+  border-radius: 999px;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  color: #c2410c;
+  cursor: pointer;
+}
+
 .ledger-card header,
-.entry-row {
+.entry-row,
+.analytics-card header,
+.chart-labels {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
@@ -114,9 +141,34 @@
   color: #b91c1c;
 }
 
+.chart-stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.chart-row {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.bar-track {
+  height: 14px;
+  border-radius: 999px;
+  background: rgba(251, 146, 60, 0.15);
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(135deg, #fb923c, #ea580c);
+}
+
 @media (max-width: 900px) {
   .hero,
-  .form-row {
+  .form-row,
+  .section-header,
+  .action-row {
     display: grid;
     grid-template-columns: 1fr;
   }

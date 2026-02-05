@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./tracker.css";
 
 type EntryType = "income" | "expense";
@@ -39,6 +39,8 @@ const seedEntries: Entry[] = [
   },
 ];
 
+const storageKey = "expense-insight-entries";
+
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-NG", {
     style: "currency",
@@ -48,7 +50,10 @@ function formatCurrency(value: number) {
 }
 
 export default function App() {
-  const [entries, setEntries] = useState(seedEntries);
+  const [entries, setEntries] = useState<Entry[]>(() => {
+    const stored = localStorage.getItem(storageKey);
+    return stored ? (JSON.parse(stored) as Entry[]) : seedEntries;
+  });
   const [draft, setDraft] = useState<Omit<Entry, "id">>({
     title: "",
     amount: 0,
@@ -56,9 +61,18 @@ export default function App() {
     date: "2026-03-17",
     type: "expense",
   });
+  const [monthFilter, setMonthFilter] = useState("2026-03");
+
+  useEffect(() => {
+    localStorage.setItem(storageKey, JSON.stringify(entries));
+  }, [entries]);
+
+  const filteredEntries = useMemo(() => {
+    return entries.filter((entry) => entry.date.startsWith(monthFilter));
+  }, [entries, monthFilter]);
 
   const totals = useMemo(() => {
-    return entries.reduce(
+    return filteredEntries.reduce(
       (summary, entry) => {
         if (entry.type === "income") {
           summary.income += entry.amount;
@@ -70,7 +84,16 @@ export default function App() {
       },
       { income: 0, expense: 0 },
     );
-  }, [entries]);
+  }, [filteredEntries]);
+
+  const categorySpend = useMemo(() => {
+    return filteredEntries
+      .filter((entry) => entry.type === "expense")
+      .reduce<Record<string, number>>((summary, entry) => {
+        summary[entry.category] = (summary[entry.category] ?? 0) + entry.amount;
+        return summary;
+      }, {});
+  }, [filteredEntries]);
 
   function addEntry(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -95,6 +118,26 @@ export default function App() {
       category: "General",
       type: "expense",
     }));
+  }
+
+  function exportCsv() {
+    const lines = [
+      ["title", "amount", "category", "date", "type"].join(","),
+      ...filteredEntries.map((entry) =>
+        [entry.title, entry.amount, entry.category, entry.date, entry.type]
+          .map((value) => `"${String(value).replaceAll("\"", "\"\"")}"`)
+          .join(","),
+      ),
+    ];
+
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+
+    anchor.href = url;
+    anchor.download = `expense-insight-${monthFilter}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
   }
 
   return (
@@ -125,7 +168,19 @@ export default function App() {
       </section>
 
       <section className="composer-card">
-        <h2>Add an entry</h2>
+        <div className="section-header">
+          <h2>Add an entry</h2>
+          <div className="action-row">
+            <input
+              type="month"
+              value={monthFilter}
+              onChange={(event) => setMonthFilter(event.target.value)}
+            />
+            <button type="button" className="ghost-button" onClick={exportCsv}>
+              Export CSV
+            </button>
+          </div>
+        </div>
         <form className="entry-form" onSubmit={addEntry}>
           <input
             placeholder="What was this for?"
@@ -180,10 +235,10 @@ export default function App() {
       <section className="ledger-card">
         <header>
           <h2>Recent activity</h2>
-          <span>{entries.length} entries</span>
+          <span>{filteredEntries.length} entries</span>
         </header>
         <div className="entry-list">
-          {entries.map((entry) => (
+          {filteredEntries.map((entry) => (
             <article key={entry.id} className="entry-row">
               <div>
                 <h3>{entry.title}</h3>
@@ -195,6 +250,31 @@ export default function App() {
                 {entry.type === "income" ? "+" : "-"}
                 {formatCurrency(entry.amount)}
               </strong>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="analytics-card">
+        <header>
+          <h2>Category spend</h2>
+          <span>{monthFilter}</span>
+        </header>
+        <div className="chart-stack">
+          {Object.entries(categorySpend).map(([category, amount]) => (
+            <article key={category} className="chart-row">
+              <div className="chart-labels">
+                <span>{category}</span>
+                <strong>{formatCurrency(amount)}</strong>
+              </div>
+              <div className="bar-track">
+                <div
+                  className="bar-fill"
+                  style={{
+                    width: `${Math.max((amount / Math.max(totals.expense, 1)) * 100, 8)}%`,
+                  }}
+                />
+              </div>
             </article>
           ))}
         </div>
